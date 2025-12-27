@@ -8,6 +8,17 @@ import tr.kontas.splitr.dto.base.BaseRequest;
 
 @Data
 @NoArgsConstructor
-@AllArgsConstructor
 @EqualsAndHashCode(callSuper = true)
-public class CommandRequest extends BaseRequest {}
+public class CommandRequest extends BaseRequest {
+    public CommandRequest(
+            String id,
+            String type,
+            String payload,
+            String callbackUrl,
+            boolean isSync,
+            long sentAtEpochMs,
+            long timeoutMs
+    ) {
+        super(id, type, payload, callbackUrl, isSync, sentAtEpochMs, timeoutMs);
+    }
+}

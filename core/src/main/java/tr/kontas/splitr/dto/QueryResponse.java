@@ -8,7 +8,6 @@ import tr.kontas.splitr.dto.base.BaseResponse;
 
 @Data
 @NoArgsConstructor
-@AllArgsConstructor
 @EqualsAndHashCode(callSuper = true)
 public class QueryResponse extends BaseResponse {
     public QueryResponse(String id, String result) {

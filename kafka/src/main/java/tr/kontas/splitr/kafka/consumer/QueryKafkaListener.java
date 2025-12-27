@@ -17,7 +17,7 @@ public class QueryKafkaListener {
             groupId = "${splitr.bus.kafka.consumer:tr.kontas.splitr.query.consumer}"
     )
     public void listen(QueryRequest r) throws Exception {
-        log.atInfo().log("Dispatching: " + r.queryId());
+        log.atInfo().log("Dispatching: " + r.getId());
         dispatcher.dispatch(r);
     }
 }

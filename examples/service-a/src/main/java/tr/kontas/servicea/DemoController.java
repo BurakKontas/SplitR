@@ -18,6 +18,6 @@ public class DemoController {
     public String order() {
         String id = UUID.randomUUID().toString();
         System.out.println("Sending: " + id);
-        return bus.querySync(new OrderQuery(id), String.class);
+        return bus.publishSync(new OrderQuery(id), String.class);
     }
 }

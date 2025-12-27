@@ -57,7 +57,7 @@
         </dependency>
 
         <dependency>
-            <groupId>tr.kontas</groupId>
+            <groupId>tr.kontas.splitr</groupId>
             <artifactId>splitr-core</artifactId>
             <version>1.0.0</version>
         </dependency>

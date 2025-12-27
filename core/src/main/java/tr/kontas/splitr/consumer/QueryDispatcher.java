@@ -42,8 +42,14 @@ public class QueryDispatcher {
         long remaining = deadline - System.currentTimeMillis();
         if (remaining <= 0) return;
 
-        if (store.contains(r.getId())) {
+        // 1) Sync request + cache hit → callback’e dön ve çık
+        if (r.isSync() && store.contains(r.getId())) {
             rest.postForEntity(r.getCallbackUrl(), store.get(r.getId()), Void.class);
+            return;
+        }
+
+        // 2) Async request + cache hit → sadece çık (timeout/bekleme yok)
+        if (!r.isSync() && store.contains(r.getId())) {
             return;
         }
 
@@ -55,10 +61,12 @@ public class QueryDispatcher {
         Future<?> f = ex.submit(() -> {
             try {
                 Object result = handler.handle(query);
-                QueryResponse resp =
-                        new QueryResponse(r.getId(), mapper.writeValueAsString(result));
+                QueryResponse resp = new QueryResponse(r.getId(), mapper.writeValueAsString(result));
                 store.put(r.getId(), resp);
-                rest.postForEntity(r.getCallbackUrl(), resp, Void.class);
+
+                if(r.isSync()) {
+                    rest.postForEntity(r.getCallbackUrl(), resp, Void.class);
+                }
             } catch (RuntimeException | JsonProcessingException | InterruptedException e) {
                 throw new RuntimeException(e); // TODO: fix later (maybe ?)
             }

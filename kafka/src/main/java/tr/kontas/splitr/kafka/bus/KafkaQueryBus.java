@@ -5,8 +5,10 @@ import org.springframework.kafka.core.KafkaTemplate;
 import tr.kontas.splitr.bus.QueryBus;
 import tr.kontas.splitr.bus.SyncRegistry;
 import tr.kontas.splitr.dto.QueryRequest;
+import tr.kontas.splitr.dto.QueryResponse;
 
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 public class KafkaQueryBus implements QueryBus {
@@ -32,7 +34,7 @@ public class KafkaQueryBus implements QueryBus {
         this.defaultTimeout = defaultTimeout;
     }
 
-    public <T> T querySync(Object query, Class<T> type, long timeoutMs) {
+    public <T> T publishSync(Object query, Class<T> type, long timeoutMs) {
         try {
             String id = UUID.randomUUID().toString();
             long now = System.currentTimeMillis();
@@ -41,17 +43,18 @@ public class KafkaQueryBus implements QueryBus {
 
             kafka.send(this.queryTopic, id,
                     new QueryRequest(
-                            id,
-                            query.getClass().getName(),
-                            mapper.writeValueAsString(query),
-                            callbackUrl,
-                            now,
-                            timeoutMs
+                        id,
+                        query.getClass().getName(),
+                        mapper.writeValueAsString(query),
+                        callbackUrl,
+                        true,
+                        now,
+                        timeoutMs
                     )
             );
 
             return mapper.readValue(
-                    future.get(timeoutMs, TimeUnit.MILLISECONDS).result(),
+                    future.get(timeoutMs, TimeUnit.MILLISECONDS).getResult(),
                     type
             );
         } catch (Exception e) {
@@ -60,7 +63,33 @@ public class KafkaQueryBus implements QueryBus {
     }
 
     @Override
-    public <T> T querySync(Object query, Class<T> responseType) {
-        return querySync(query, responseType, defaultTimeout);
+    public <T> T publishSync(Object query, Class<T> responseType) {
+        return publishSync(query, responseType, defaultTimeout);
+    }
+
+    @Override
+    public <T> CompletableFuture<QueryResponse> publishAsync(Object query, Class<T> responseType) {
+        try {
+            String id = UUID.randomUUID().toString();
+            long now = System.currentTimeMillis();
+
+            var future = registry.register(id);
+
+            kafka.send(this.queryTopic, id,
+                new QueryRequest(
+                        id,
+                        query.getClass().getName(),
+                        mapper.writeValueAsString(query),
+                        callbackUrl,
+                        false,
+                        now,
+                        Long.MAX_VALUE
+                )
+            );
+
+            return future;
+        } catch (Exception e) {
+            throw new RuntimeException("Query timeout", e);
+        }
     }
 }
