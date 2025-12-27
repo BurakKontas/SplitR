@@ -5,65 +5,25 @@ import org.springframework.kafka.core.KafkaTemplate;
 import tr.kontas.splitr.bus.QueryBus;
 import tr.kontas.splitr.bus.SyncRegistry;
 import tr.kontas.splitr.dto.QueryRequest;
-import tr.kontas.splitr.dto.QueryResponse;
 
-import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 
-public class KafkaQueryBus implements QueryBus {
+public class KafkaQueryBus extends AbstractKafkaBus<QueryRequest> implements QueryBus {
 
-    private final KafkaTemplate<String, QueryRequest> kafka;
-    private final SyncRegistry registry;
-    private final ObjectMapper mapper;
-    private final String callbackUrl;
-    private final String queryTopic;
-    private final int defaultTimeout;
-
-    public KafkaQueryBus(String queryTopic,
-                         KafkaTemplate<String, QueryRequest> kafka,
-                         SyncRegistry registry,
-                         ObjectMapper mapper,
-                         String callbackUrl,
-                         int defaultTimeout) {
-        this.queryTopic = queryTopic;
-        this.kafka = kafka;
-        this.registry = registry;
-        this.mapper = mapper;
-        this.callbackUrl = callbackUrl;
-        this.defaultTimeout = defaultTimeout;
-
-        if(callbackUrl.isBlank()){
-            throw new RuntimeException("splitr.callback-url is blank");
-        }
+    public KafkaQueryBus(String queryTopic, KafkaTemplate<String, QueryRequest> kafka,
+                         SyncRegistry registry, ObjectMapper mapper,
+                         String callbackUrl, int defaultTimeout) {
+        super(queryTopic, kafka, registry, mapper, callbackUrl, defaultTimeout);
     }
 
-    public <T> T publishSync(Object query, Class<T> type, long timeoutMs) {
-        try {
-            String id = UUID.randomUUID().toString();
-            long now = System.currentTimeMillis();
+    @Override
+    protected QueryRequest createRequest(String id, String typeName, String payload, boolean isSync, long now, long timeout) {
+        return new QueryRequest(id, typeName, payload, callbackUrl, isSync, now, timeout);
+    }
 
-            var future = registry.registerQuery(id);
-
-            kafka.send(this.queryTopic, id,
-                    new QueryRequest(
-                        id,
-                        query.getClass().getName(),
-                        mapper.writeValueAsString(query),
-                        callbackUrl,
-                        true,
-                        now,
-                        timeoutMs
-                    )
-            );
-
-            return mapper.readValue(
-                    future.get(timeoutMs, TimeUnit.MILLISECONDS).getResult(),
-                    type
-            );
-        } catch (Exception e) {
-            throw new RuntimeException("Query timeout", e);
-        }
+    @Override
+    public <T> T publishSync(Object query, Class<T> responseType, long timeoutMs) {
+        return executeSync(query, responseType, timeoutMs);
     }
 
     @Override
@@ -73,36 +33,6 @@ public class KafkaQueryBus implements QueryBus {
 
     @Override
     public <T> CompletableFuture<T> publishAsync(Object query, Class<T> responseType) {
-        try {
-            String id = UUID.randomUUID().toString();
-            long now = System.currentTimeMillis();
-
-            var future = registry.registerQuery(id);
-
-            kafka.send(this.queryTopic, id,
-                new QueryRequest(
-                        id,
-                        query.getClass().getName(),
-                        mapper.writeValueAsString(query),
-                        callbackUrl,
-                        false,
-                        now,
-                        Long.MAX_VALUE
-                )
-            );
-
-            return future.thenApply(response -> {
-                try {
-                    return mapper.readValue(response.getResult(), responseType);
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
-            });
-
-        } catch (Exception e) {
-            CompletableFuture<T> failed = new CompletableFuture<>();
-            failed.completeExceptionally(e);
-            return failed;
-        }
+        return executeAsync(query, responseType, false);
     }
 }

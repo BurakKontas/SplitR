@@ -1,75 +1,36 @@
 package tr.kontas.splitr.consumer;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.web.client.RestTemplate;
 import tr.kontas.splitr.dto.CommandRequest;
 import tr.kontas.splitr.dto.CommandResponse;
 
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.*;
-import java.util.stream.Collectors;
 
+/**
+ * Dispatches incoming command requests from Kafka to the appropriate {@link CommandHandler}
+ * implementation registered in the Spring context.
+ *
+ * @author BurakKontas
+ * @version 1.0.0
+ */
 @Slf4j
-public class CommandDispatcher {
+public class CommandDispatcher extends BaseDispatcher<CommandRequest, CommandResponse, CommandHandler<?>> {
 
-    private final Map<Class<?>, CommandHandler<?>> handlers;
-    private final IdempotencyStore store;
-    private final ObjectMapper mapper;
-    private final RestTemplate rest = new RestTemplate();
-
-    public CommandDispatcher(List<CommandHandler<?>> list,
-                           IdempotencyStore store,
-                           ObjectMapper mapper) {
-        handlers = list.stream().collect(
-                java.util.stream.Collectors.toMap(CommandHandler::type, h->h)
-        );
-
-        String joinedNames = handlers.keySet().stream()
-                .map(Class::getName)
-                .collect(Collectors.joining(", "));
-
-        log.atInfo().log("Handlers: " + joinedNames);
-        this.store = store;
-        this.mapper = mapper;
+    public CommandDispatcher(List<CommandHandler<?>> list, IdempotencyStore store, ObjectMapper mapper) {
+        super(list, store, mapper);
     }
 
-    public void dispatch(CommandRequest r) throws Exception {
-        log.atInfo().log("Working on: " + r.getId());
-        long deadline = r.getSentAtEpochMs() + r.getTimeoutMs();
-        long remaining = deadline - System.currentTimeMillis();
-        if (remaining <= 0) return;
-
-        // 1) Sync request + cache hit → callback’e dön ve çık
-        if (store.contains(r.getId())) {
-            rest.postForEntity(r.getCallbackUrl(), store.get(r.getId()), Void.class);
-            return;
-        }
-
-        Class<?> type = Class.forName(r.getType());
-        CommandHandler handler = handlers.get(type);
-        Object query = mapper.readValue(r.getPayload(), type);
-
-        ExecutorService ex = Executors.newSingleThreadExecutor();
-        Future<?> f = ex.submit(() -> {
-            try {
-                Object result = handler.handle(query);
-                CommandResponse resp = new CommandResponse(r.getId(), mapper.writeValueAsString(result));
-                store.put(r.getId(), resp);
-                rest.postForEntity(r.getCallbackUrl(), resp, Void.class);
-            } catch (RuntimeException | JsonProcessingException | InterruptedException e) {
-                throw new RuntimeException(e); // TODO: fix later (maybe ?)
-            }
-        });
-
-        try {
-            f.get(remaining, TimeUnit.MILLISECONDS);
-        } catch (TimeoutException e) {
-            f.cancel(true);
-        } finally {
-            ex.shutdownNow();
-        }
+    /**
+     * Creates a typed {@link CommandResponse} instance correlated to the dispatched command.
+     *
+     * @param id            Correlation/command ID
+     * @param payloadJson   Serialized handler result
+     * @return a new {@link CommandResponse} instance
+     */
+    @Override
+    protected CommandResponse createResponse(String id, String payloadJson) {
+        return new CommandResponse(id, payloadJson);
     }
 }
