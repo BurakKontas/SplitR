@@ -4,14 +4,10 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.EqualsAndHashCode;
-import tr.kontas.splitr.dto.base.BaseResponse;
+import tr.kontas.splitr.dto.base.BaseRequest;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @EqualsAndHashCode(callSuper = true)
-public class QueryResponse extends BaseResponse {
-    public QueryResponse(String id, String result) {
-        super(id, result);
-    }
-}
+public class CommandRequest extends BaseRequest {}

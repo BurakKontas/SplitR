@@ -37,31 +37,30 @@ public class QueryDispatcher {
     }
 
     public void dispatch(QueryRequest r) throws Exception {
-
-        log.atInfo().log("Working on: " + r.queryId());
-        long deadline = r.sentAtEpochMs() + r.timeoutMs();
+        log.atInfo().log("Working on: " + r.getId());
+        long deadline = r.getSentAtEpochMs() + r.getTimeoutMs();
         long remaining = deadline - System.currentTimeMillis();
         if (remaining <= 0) return;
 
-        if (store.contains(r.queryId())) {
-            rest.postForEntity(r.callbackUrl(), store.get(r.queryId()), Void.class);
+        if (store.contains(r.getId())) {
+            rest.postForEntity(r.getCallbackUrl(), store.get(r.getId()), Void.class);
             return;
         }
 
-        Class<?> type = Class.forName(r.queryType());
+        Class<?> type = Class.forName(r.getType());
         QueryHandler handler = handlers.get(type);
-        Object query = mapper.readValue(r.payload(), type);
+        Object query = mapper.readValue(r.getPayload(), type);
 
         ExecutorService ex = Executors.newSingleThreadExecutor();
         Future<?> f = ex.submit(() -> {
             try {
                 Object result = handler.handle(query);
                 QueryResponse resp =
-                        new QueryResponse(r.queryId(), mapper.writeValueAsString(result));
-                store.put(r.queryId(), resp);
-                rest.postForEntity(r.callbackUrl(), resp, Void.class);
+                        new QueryResponse(r.getId(), mapper.writeValueAsString(result));
+                store.put(r.getId(), resp);
+                rest.postForEntity(r.getCallbackUrl(), resp, Void.class);
             } catch (RuntimeException | JsonProcessingException | InterruptedException e) {
-                throw new RuntimeException(e); // TODO: fix later
+                throw new RuntimeException(e); // TODO: fix later (maybe ?)
             }
         });
 

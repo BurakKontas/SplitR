@@ -12,7 +12,7 @@ public class SyncRegistry {
         return f;
     }
     public void complete(QueryResponse r) {
-        var f = map.remove(r.queryId());
+        var f = map.remove(r.getId());
         if (f != null) f.complete(r);
     }
 }

@@ -10,8 +10,8 @@ import tr.kontas.splitr.dto.base.BaseResponse;
 @NoArgsConstructor
 @AllArgsConstructor
 @EqualsAndHashCode(callSuper = true)
-public class QueryResponse extends BaseResponse {
-    public QueryResponse(String id, String result) {
+public class CommandResponse extends BaseResponse {
+    public CommandResponse(String id, String result) {
         super(id, result);
     }
 }
