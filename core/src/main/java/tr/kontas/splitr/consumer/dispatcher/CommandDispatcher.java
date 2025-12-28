@@ -11,7 +11,7 @@ import tr.kontas.splitr.dto.CommandResponse;
 import java.util.List;
 
 /**
- * Dispatches incoming command requests from Kafka to the appropriate {@link CommandHandler}
+ * Dispatches incoming command requests from listener/consumer to the appropriate {@link CommandHandler}
  * implementation registered in the Spring context.
  *
  * @author BurakKontas

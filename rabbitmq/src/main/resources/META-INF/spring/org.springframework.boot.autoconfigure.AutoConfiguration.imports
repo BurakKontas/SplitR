@@ -1,0 +1,2 @@
+tr.kontas.splitr.rabbitmq.autoconfigure.RabbitBusAutoConfig
+tr.kontas.splitr.rabbitmq.autoconfigure.RabbitConsumerAutoConfig

@@ -10,7 +10,7 @@ import tr.kontas.splitr.dto.QueryResponse;
 import java.util.List;
 
 /**
- * Dispatches incoming query requests from Kafka to the appropriate {@link QueryHandler}
+ * Dispatches incoming query requests from listener/consumer to the appropriate {@link QueryHandler}
  * implementation registered in the Spring context.
  *
  * @author BurakKontas

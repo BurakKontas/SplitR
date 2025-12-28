@@ -9,6 +9,13 @@ import tr.kontas.splitr.dto.base.BaseResponse;
 
 import java.util.List;
 
+/**
+ * Dispatches incoming query requests from listener/consumer to the appropriate {@link EventHandler}
+ * implementation registered in the Spring context.
+ *
+ * @author BurakKontas
+ * @version 1.0.0
+ */
 @Slf4j
 public class EventDispatcher extends BaseDispatcher<EventRequest, BaseResponse, EventHandler<?>> {
 

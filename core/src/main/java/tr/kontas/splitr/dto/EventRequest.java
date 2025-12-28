@@ -11,6 +11,6 @@ public class EventRequest extends BaseRequest {
             String type,
             String payload
     ) {
-        super(id, type, payload, "", false, System.currentTimeMillis(), Long.MAX_VALUE);
+        super(id, type, payload, "", false, System.currentTimeMillis(), Long.MAX_VALUE, 0);
     }
 }

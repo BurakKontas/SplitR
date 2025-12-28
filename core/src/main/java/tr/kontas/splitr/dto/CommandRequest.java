@@ -1,9 +1,8 @@
 package tr.kontas.splitr.dto;
 
-import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 import tr.kontas.splitr.dto.base.BaseRequest;
 
 @Data
@@ -19,6 +18,6 @@ public class CommandRequest extends BaseRequest {
             long sentAtEpochMs,
             long timeoutMs
     ) {
-        super(id, type, payload, callbackUrl, isSync, sentAtEpochMs, timeoutMs);
+        super(id, type, payload, callbackUrl, isSync, sentAtEpochMs, timeoutMs, 0);
     }
 }

@@ -228,6 +228,9 @@ splitr:
 | `splitr.bus.kafka.command.topic` | `tr.kontas.splitr.command.topic` | Kafka Command topic.                                 |
 | `splitr.bus.kafka.query.topic`   | `tr.kontas.splitr.query.topic`   | Kafka query topic.                                   |
 | `splitr.bus.kafka.event.topic`   | `tr.kontas.splitr.event.topic`   | Kafka event topic.                                   |
+| `splitr.rabbit.command.queue`    | `tr.kontas.splitr.command.queue` | RabbitMQ command queue.                              |
+| `splitr.rabbit.event.queue`      | `tr.kontas.splitr.event.queue`   | RabbitMQ event queue.                                |
+| `splitr.rabbit.query.queue`      | `tr.kontas.splitr.query.queue`   | RabbitMQ query queue.                                |
 
 ## 📑 Roadmap & TODO's
 
@@ -268,7 +271,7 @@ splitr:
 ### 💾 Storage & Transports
 
 * [x] **Kafka Transport:** Primary high-throughput transport layer.
-* [ ] **RabbitMQ Transport:** AMQP-based alternative.
+* [X] **RabbitMQ Transport:** AMQP-based alternative.
   * *Note:* Support for environments where lightweight broker logic and complex routing (Exchange types) are preferred.
 
 ---

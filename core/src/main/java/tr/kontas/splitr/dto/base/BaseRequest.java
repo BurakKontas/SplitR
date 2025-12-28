@@ -15,5 +15,6 @@ public class BaseRequest {
     private boolean isSync;
     private long sentAtEpochMs;
     private long timeoutMs;
+    private int retryCount = 0;
 }
 
