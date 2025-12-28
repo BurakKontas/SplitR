@@ -8,6 +8,31 @@
     <artifactId>splitr-core</artifactId>
     <version>1.0.0</version>
     <packaging>jar</packaging>
+    <description>SplitR is a lightweight, Spring Boot-based library designed to implement the Request-Response pattern over Kafka. It allows microservices to execute synchronous, typed queries across distributed boundaries while maintaining idempotency and high performance.</description>
+    <url>https://github.com/BurakKontas/SplitR</url>
+    <name>SplitR Core</name>
+
+    <licenses>
+        <license>
+            <name>GPL-3.0 license</name>
+            <url>https://github.com/BurakKontas/SplitR/blob/main/LICENSE.txt</url>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <name>Arda Burak Kontaş</name>
+            <email>aburakkontas@hotmail.com</email>
+            <organization>BurakKontas</organization>
+            <organizationUrl>https://github.com/BurakKontas</organizationUrl>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>scm:git:git://github.com/BurakKontas/SplitR.git</connection>
+        <developerConnection>scm:git:ssh://github.com/BurakKontas/SplitR.git</developerConnection>
+        <url>https://github.com/BurakKontas/SplitR/tree/main</url>
+    </scm>
 
     <properties>
         <maven.compiler.source>25</maven.compiler.source>
