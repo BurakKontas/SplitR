@@ -29,11 +29,23 @@ public class DomainEventDispatcher {
 
         log.atInfo().log("Processing event: " + eventId);
 
+        if (handlers.isEmpty()) {
+            return;
+        }
+
+        boolean handlerFound = false;
+
         try {
             // 2. Tüm handler'ları çalıştır
             for (DomainEventHandler<?> h : handlers) {
-                if (h.type().equals(event.getPayload().getClass()))
+                if (h.type().equals(event.getPayload().getClass())) {
                     ((DomainEventHandler<Object>) h).handle(event.getPayload());
+                    handlerFound = true;
+                }
+            }
+
+            if (!handlerFound) {
+                log.error("No DomainEventHandler found for payload type: {}", event.getPayload().getClass().getName());
             }
 
             store.put(eventId, null);
