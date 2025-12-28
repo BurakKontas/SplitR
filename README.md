@@ -140,7 +140,7 @@ public class InventoryHandler extends BaseDomainEventHandler<OrderDomainEvent> {
 
 ---
 
-## How To Send Message From Outside
+## ✈ How To Send Message From Outside
 
 ##### Kafka messages sent by SplitR are structured as below.
 
