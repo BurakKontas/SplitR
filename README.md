@@ -4,27 +4,13 @@
 
 ---
 
-## 🔄 How It Works (Workflow)
+## 🔄 Workflow Models
 
-Splitr bridges the gap between asynchronous messaging and synchronous execution requirements.
+Splitr supports three distinct communication patterns: **Sync Request-Response**, **Async Broadcast (Kafka)**, and **In-Memory Events**.
 
-1. **Request (Service-A):**
-* Generates a unique **Correlation-ID**.
-* Registers a promise in the internal `SyncRegistry` and blocks the executing thread.
-* Publishes a `QueryRequest` to Kafka, containing the payload and a `callbackUrl`.
+### 1. Command & Query Workflow (Sync/Async Request-Response)
 
-
-2. **Processing (Service-B):**
-* `QueryKafkaListener` consumes the message.
-* The `IdempotencyStore` checks if this ID was processed before to prevent duplicate execution.
-* The `QueryDispatcher` routes the query to the specific `QueryHandler<T>`.
-
-
-3. **Callback & Completion:**
-* Service-B sends the result via an HTTP POST to Service-A’s `callbackUrl`.
-* Service-A’s `QueryCallbackController` receives the result, matches the Correlation-ID, and unblocks the original thread.
-
-Note: Command workflow is same with query.
+This model bridges the gap between asynchronous messaging and synchronous execution requirements by creating a temporary bridge between two services.
 
 ```mermaid
 sequenceDiagram
@@ -33,18 +19,122 @@ sequenceDiagram
     participant Kafka as Kafka Topic
     participant ServiceB as Service-B (Consumer)
 
-    User->>ServiceA: GET /orders/1
-    ServiceA->>ServiceA: Create Correlation-ID & SyncRegistry entry
-    ServiceA->>Kafka: Send QueryRequest (ID, callbackUrl, payload)
+    User->>ServiceA: GET /orders/1 (Query)
+    ServiceA->>ServiceA: Register ID in SyncRegistry
+    ServiceA->>Kafka: Send Request (ID, callbackUrl, payload)
     Note over ServiceA: Thread Blocked (Waiting...)
     
-    Kafka->>ServiceB: Deliver Message
-    ServiceB->>ServiceB: Business Logic (QueryHandler)
-    ServiceB->>ServiceA: HTTP POST (callbackUrl) with Result
+    Kafka->>ServiceB: Consume Message
+    ServiceB->>ServiceB: Idempotency Check & Handling
+    ServiceB->>ServiceA: HTTP POST (callbackUrl/query) with Result
     
-    ServiceA->>ServiceA: Match ID in SyncRegistry & Complete Future
+    ServiceA->>ServiceA: Match ID & Complete Promise
     Note over ServiceA: Thread Released
-    ServiceA->>User: 200 OK (Order Details)
+    ServiceA->>User: 200 OK (Data)
+
+```
+
+### 2. Distributed Event Workflow (Pub/Sub over Kafka)
+
+Used to broadcast state changes across the system. It follows a "fire-and-forget" approach where no response is expected from the consumers. Multiple services can listen to the same event independently.
+
+```mermaid
+graph LR
+    Publisher[Service-A Publisher] -- "publish(Event)" --> Topic((Kafka Event Topic))
+    Topic -- "Broadcast" --> Consumer1[Service-B: Handler 1]
+    Topic -- "Broadcast" --> Consumer2[Service-C: Handler 1]
+    Topic -- "Broadcast" --> Consumer3[Service-C: Handler 2]
+    
+    subgraph Service-C Logic
+    Consumer2
+    Consumer3
+    end
+
+```
+
+### 3. Domain Event Workflow (In-Memory Pub/Sub)
+
+Designed for internal application logic triggers. It executes entirely **In-Memory** within the same JVM, providing the benefits of loose coupling without network overhead.
+
+```mermaid
+sequenceDiagram
+    participant App as Business Logic
+    participant DEBus as DomainEventBus
+    participant H1 as Local Handler A
+    participant H2 as Local Handler B
+
+    App->>DEBus: arise(DomainEvent)
+    Note right of DEBus: "ARISE!" - Local Dispatch
+    par Execute Handlers
+        DEBus->>H1: handle(event)
+        DEBus->>H2: handle(event)
+    end
+    DEBus-->>App: Execution Finished
+
+```
+
+---
+
+## 🛠 Usage Examples
+
+### Commands & Queries
+
+```java
+// Publisher: Blocking call
+String result = queryBus.publishSync(new OrderQuery("123"), String.class);
+
+// Consumer: Implementation
+@Component
+public class OrderQueryHandler extends BaseQueryHandler<OrderQuery> {
+    @Override
+    public String handle(OrderQuery q) { return "Data: " + q.orderId(); }
+}
+
+```
+
+```java
+// Publisher: Blocking call
+String result = commandBus.publishSync(new OrderCommand("123"), String.class);
+
+// Consumer: Implementation
+@Component
+public class OrderCommandHandler extends BaseCommandHandler<OrderCommand> {
+    @Override
+    public String handle(OrderCommand q) { return "Data: " + q.orderId(); }
+}
+
+```
+
+### Distributed Events
+
+```java
+// Publisher: Fire-and-forget to Kafka
+eventBus.publish(new OrderProcessedEvent("123")); 
+
+@Component
+public class OrderEventHandler extends BaseEventHandler<OrderProcessedEvent> {
+    @Override
+    public void onEvent(OrderProcessedEvent payload) {
+        log.info("OrderProcessedEvent in OrderEventHandler processed with id: " + payload.orderId());
+    }
+}
+
+```
+
+### Domain Events (In-Memory)
+
+```java
+// Publisher: Trigger local handlers
+domainEventBus.arise(new OrderDomainEvent("123"));
+
+// Consumer: Local Listener
+@Component
+public class InventoryHandler extends BaseDomainEventHandler<OrderDomainEvent> {
+  @Override
+  public void onEvent(OrderDomainEvent event) {
+    log.info("Adjusting local inventory for: {}", event.getId());
+  }
+}
 
 ```
 
@@ -53,7 +143,7 @@ sequenceDiagram
 ## 🚀 Features
 
 * **Synchronous over Kafka:** Blocking local threads for remote responses, mimicking REST over message brokers.
-* **Automatic Dispatching:** Just implement `QueryHandler<T>`, and Splitr handles the routing.
+* **Automatic Dispatching:** Just implement `BaseQueryHandler<T>`, and Splitr handles the routing.
 * **Idempotency Engine:** Built-in LRU cache to prevent "at-least-once" delivery side effects.
 * **Type Safety:** Full support for polymorphic queries via Jackson Type Headers.
 * **Configurable Timeouts:** Global or per-request timeout management.
@@ -106,10 +196,7 @@ public record OrderQuery(String orderId) { }
 
 ```java
 @Component
-public class OrderQueryHandler implements QueryHandler<OrderQuery> {
-    @Override
-    public Class<OrderQuery> type() { return OrderQuery.class; }
-
+public class OrderQueryHandler implements BaseQueryHandler<OrderQuery> {
     @Override
     public Object handle(OrderQuery q) {
         return "ORDER-DETAILS-" + q.orderId();
@@ -142,20 +229,12 @@ public class OrderController {
 |----------------------------------|----------------------------------|------------------------------------------------------|
 | `splitr.publisher.enabled`       | `false`                          | Enables QueryBus and Callback endpoint.              |
 | `splitr.consumer.enabled`        | `false`                          | Enables Kafka listeners and Dispatcher.              |
+| `splitr.domainevents.enabled`    | `false`                          | Enables domain events.                               |
 | `splitr.callback-url`            | - (Required)                     | The HTTP endpoint for the publisher's callback.      |
-| `splitr.bus.default-timeout`     | `10000`                            | Default wait time in ms for sync query and commands. |
+| `splitr.bus.default-timeout`     | `10000`                          | Default wait time in ms for sync query and commands. |
 | `splitr.bus.kafka.command.topic` | `tr.kontas.splitr.command.topic` | Kafka Command topic.                                 |
 | `splitr.bus.kafka.query.topic`   | `tr.kontas.splitr.query.topic`   | Kafka query topic.                                   |
-
----
-
-Yol haritasını (Roadmap) hem görsel olarak daha profesyonel bir hale getirdim hem de **DLQ Jobs** kısmını tam istediğin "cron tabanlı yeniden deneme" (Retry Mechanism) detaylarıyla genişlettim.
-
----
-
-Roadmap'i her madde için teknik derinlik ve stratejik notlar ekleyerek güncelledim. Özellikle **DLQ Jobs** ve **Idempotency** gibi kritik kısımları mimari gereksinimlerine göre detaylandırdım.
-
----
+| `splitr.bus.kafka.event.topic`   | `tr.kontas.splitr.event.topic`   | Kafka event topic.                                   |
 
 ## 📑 Roadmap & TODO's
 
@@ -163,8 +242,9 @@ Roadmap'i her madde için teknik derinlik ve stratejik notlar ekleyerek güncell
 
 * [x] **Query Bus:** Distributed request-response pattern.
 * [x] **Command Bus:** Asynchronous command dispatching.
-* [ ] **Event Bus:** Pub/Sub broadcast support for domain events.
+* [x] **Event Bus:** Pub/Sub broadcast support for events over queue/bus.
   * *Note:* Fan-out pattern implementation. Multiple listeners for a single event with independent consumer groups.
+* [x] **Domain Events InMemory Bus:** Pub/Sub broadcast support for domain events.
 * [ ] **Dead Letter Queue (DLQ):** Automatic failure routing to `.DLT` topics for commands and events.
   * *Note:* Catch-all error handling in listeners to prevent infinite retry loops and partition blocking.
 * [ ] **DLQ Retry Jobs:** Scheduled background jobs to consume from DLQ and re-publish to main topics.
@@ -175,8 +255,7 @@ Roadmap'i her madde için teknik derinlik ve stratejik notlar ekleyerek güncell
 
 ### 🛡 Resilience & Security
 
-* [ ] **Idempotency Guard:** Distributed store to prevent duplicate processing.
-  * *Note:* Redis-backed check for `Message-ID` before execution. Essential for "at-least-once" delivery guarantees in Kafka.
+* [x] **Idempotency Guard:** Distributed store to prevent duplicate processing.
 * [ ] **Circuit Breaker:** Resilience4j integration to protect the bus.
   * *Note:* Automatically trip the circuit if the `callback-url` or target microservice is down, preventing resource exhaustion.
 * [ ] **Payload Encryption:** Optional AES encryption for sensitive Kafka record data.
@@ -198,8 +277,6 @@ Roadmap'i her madde için teknik derinlik ve stratejik notlar ekleyerek güncell
 * [x] **Kafka Transport:** Primary high-throughput transport layer.
 * [ ] **RabbitMQ Transport:** AMQP-based alternative.
   * *Note:* Support for environments where lightweight broker logic and complex routing (Exchange types) are preferred.
-* [ ] **Redis Sync Registry:** Distributed state for horizontal scaling.
-  * *Note:* Necessary when the `SyncRegistry` needs to be shared across multiple instances of the same service to handle response callbacks.
 
 ---
 
