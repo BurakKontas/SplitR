@@ -2,6 +2,7 @@ package tr.kontas.splitr.consumer.dispatcher;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
+import org.jspecify.annotations.NonNull;
 import org.springframework.web.client.RestTemplate;
 import tr.kontas.splitr.consumer.bus.BusHandler;
 import tr.kontas.splitr.consumer.store.IdempotencyStore;
@@ -11,8 +12,7 @@ import tr.kontas.splitr.dto.QueryRequest;
 import tr.kontas.splitr.dto.base.BaseRequest;
 import tr.kontas.splitr.dto.base.BaseResponse;
 
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.*;
 import java.util.stream.Collectors;
 
@@ -25,7 +25,9 @@ public abstract class BaseDispatcher<TReq extends BaseRequest, TResp extends Bas
     protected final RestTemplate rest = new RestTemplate();
 
     protected BaseDispatcher(List<THandler> list, IdempotencyStore store, ObjectMapper mapper) {
-        this.handlers = list.stream().collect(Collectors.groupingBy(BusHandler::type));
+        this.handlers = new ConcurrentHashMap<>();
+        list.forEach(h -> handlers.computeIfAbsent(h.type(), k -> new CopyOnWriteArrayList<>()).add(h));
+
         this.store = store;
         this.mapper = mapper;
     }
@@ -57,14 +59,10 @@ public abstract class BaseDispatcher<TReq extends BaseRequest, TResp extends Bas
         Future<?> f = ex.submit(() -> {
             try {
                 if (isEvent) {
-                    // EVENT ise: Tüm handler'ları dön
                     for (THandler h : typeHandlers) {
                         ((BusHandler<Object>) h).handle(payloadObj);
                     }
-                    // Eventlerde genellikle bir "sonuç" (return value) beklenmez
-                    // veya boş dönülür. Webhook tetiklenmeyeceği için burası opsiyoneldir.
                 } else {
-                    // COMMAND ise: Sadece ilk handler'ı çalıştır ve sonucu dön
                     Object result = ((BusHandler<Object>) typeHandlers.getFirst()).handle(payloadObj);
                     TResp resp = createResponse(r.getId(), mapper.writeValueAsString(result));
                     store.put(r.getId(), resp);
@@ -86,21 +84,18 @@ public abstract class BaseDispatcher<TReq extends BaseRequest, TResp extends Bas
     }
 
     private void triggerWebhook(TReq r, BaseResponse resp) {
-        if (r instanceof EventRequest) {
-            return;
-        }
-
         String typePath = switch (r) {
             case QueryRequest q -> "query";
             case CommandRequest c -> "command";
             default -> "unknown";
         };
 
-        // Eğer callbackUrl "http://service-a/callback/%s" şeklinde geliyorsa doldurur
-        String finalUrl = r.getCallbackUrl();
-        if (finalUrl.contains("%s")) {
-            finalUrl = String.format(finalUrl, typePath);
+        if(typePath.equals("unknown")) {
+            return; // Webhooks are only for commands and queries
         }
+
+        String finalUrl = r.getCallbackUrl();
+        if (finalUrl.contains("%s")) finalUrl = String.format(finalUrl, typePath);
 
         try {
             rest.postForEntity(finalUrl, resp, Void.class);
@@ -110,4 +105,16 @@ public abstract class BaseDispatcher<TReq extends BaseRequest, TResp extends Bas
     }
 
     protected abstract TResp createResponse(String id, String payloadJson);
+
+    // for orchestration saga
+    public void addHandler(@NonNull THandler handler) {
+        handlers.computeIfAbsent(handler.type(), k -> new CopyOnWriteArrayList<>()).add(handler);
+    }
+
+    // for orchestration saga
+    public boolean removeHandler(@NonNull THandler handler) {
+        List<THandler> list = handlers.get(handler.type());
+        if (list == null) return false;
+        return list.remove(handler);
+    }
 }
