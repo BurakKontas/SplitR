@@ -220,10 +220,12 @@ splitr:
 
 | Property                         | Default                          | Description                                          |
 |----------------------------------|----------------------------------|------------------------------------------------------|
-| `splitr.publisher.enabled`       | `false`                          | Enables QueryBus and Callback endpoint.              |
-| `splitr.consumer.enabled`        | `false`                          | Enables Kafka listeners and Dispatcher.              |
-| `splitr.domainevents.enabled`    | `false`                          | Enables domain events.                               |
-| `splitr.callback-url`            | - (Required)                     | The HTTP endpoint for the publisher's callback.      |
+| `splitr.kafka.publisher.enabled`       | `false`                          | Enables QueryBus and Callback endpoint.              |
+| `splitr.kafka.consumer.enabled`        | `false`                          | Enables Kafka listeners and Dispatcher.              |
+| `splitr.rabbit.publisher.enabled`       | `false`                          | Enables QueryBus and Callback endpoint.              |
+| `splitr.rabbit.consumer.enabled`        | `false`                          | Enables RabbitMQ listeners and Dispatcher.              |
+| `splitr.inmemory.enabled`        | `false`                          | Enables inmemory listeners and Dispatcher and Bus.              |
+| `splitr.callback-url`            | - (Required)                     | The HTTP endpoint for the publisher's callback. (ex: http://localhost:${server.port}/internal/%s/callback) (%s replaced by either command or query)     |
 | `splitr.bus.default-timeout`     | `10000`                          | Default wait time in ms for sync query and commands. |
 | `splitr.bus.kafka.command.topic` | `tr.kontas.splitr.command.topic` | Kafka Command topic.                                 |
 | `splitr.bus.kafka.query.topic`   | `tr.kontas.splitr.query.topic`   | Kafka query topic.                                   |
@@ -231,6 +233,11 @@ splitr:
 | `splitr.rabbit.command.queue`    | `tr.kontas.splitr.command.queue` | RabbitMQ command queue.                              |
 | `splitr.rabbit.event.queue`      | `tr.kontas.splitr.event.queue`   | RabbitMQ event queue.                                |
 | `splitr.rabbit.query.queue`      | `tr.kontas.splitr.query.queue`   | RabbitMQ query queue.                                |
+| `splitr.idempotency.max-size`      | `100`   | Default LruStore Idempotency Key Size Limit.                                |
+| `splitr.idempotency.ttl-ms`      | `100`   | Default LruStore Idempotency Key Store TTL as Milliseconds.                              |
+| `splitr.registry.max-size`      | `10000`   | SyncRegistry max thread count.                            |
+| `splitr.registry.cleanup-interval-ms`      | `10000`   | SyncRegistry clear expired threads interval timeout as Milliseconds.                             |
+
 
 ## 📑 Roadmap & TODO's
 
