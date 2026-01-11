@@ -2,6 +2,7 @@ package tr.kontas.splitr.rabbitmq.bus.base;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import tr.kontas.splitr.bus.base.IdempotencyProtected;
 import tr.kontas.splitr.bus.registry.SyncRegistry;
 import tr.kontas.splitr.dto.base.BaseResponse;
 
@@ -42,12 +43,12 @@ public abstract class AbstractRabbitBus<TRequest> {
     protected abstract TRequest createRequest(String id, String typeName, String payload,
                                               boolean isSync, long now, long timeout);
 
-    protected <T> T executeSync(Object payload, Class<T> responseType, long timeoutMs) {
+    protected <T> T executeSync(IdempotencyProtected payload, Class<T> responseType, long timeoutMs) {
         try {
-            String id = UUID.randomUUID().toString();
+            String id = payload.getIdempotencyKey();
             var future = registry.register(id);
 
-            sendInternal(id, payload, true, timeoutMs);
+            sendInternal(payload, true, timeoutMs);
 
             BaseResponse response = future.get(timeoutMs, TimeUnit.MILLISECONDS);
             return mapper.readValue(response.getResult(), responseType);
@@ -57,21 +58,20 @@ public abstract class AbstractRabbitBus<TRequest> {
     }
 
     // Event bus için
-    protected void execute(Object payload) {
+    protected void execute(IdempotencyProtected payload) {
         try {
-            String id = UUID.randomUUID().toString();
-            sendInternal(id, payload, false, Long.MAX_VALUE);
+            sendInternal(payload, false, Long.MAX_VALUE);
         } catch (Exception e) {
             throw new RuntimeException("Async execution failed", e);
         }
     }
 
-    protected <T> CompletableFuture<T> executeAsync(Object payload, Class<T> responseType) {
+    protected <T> CompletableFuture<T> executeAsync(IdempotencyProtected payload, Class<T> responseType) {
         try {
-            String id = UUID.randomUUID().toString();
+            String id = payload.getIdempotencyKey();
             var future = registry.register(id);
 
-            sendInternal(id, payload, false, Long.MAX_VALUE);
+            sendInternal(payload, false, Long.MAX_VALUE);
 
             return future.thenApply(response -> {
                 try {
@@ -85,9 +85,9 @@ public abstract class AbstractRabbitBus<TRequest> {
         }
     }
 
-    protected void sendInternal(String id, Object payload, boolean isSync, long timeoutMs) throws Exception {
+    protected void sendInternal(IdempotencyProtected payload, boolean isSync, long timeoutMs) throws Exception {
         TRequest request = createRequest(
-                id,
+                payload.getIdempotencyKey(),
                 payload.getClass().getName(),
                 mapper.writeValueAsString(payload),
                 isSync,
@@ -96,7 +96,7 @@ public abstract class AbstractRabbitBus<TRequest> {
         );
 
         rabbit.convertAndSend(this.queue, request, message -> {
-            message.getMessageProperties().setCorrelationId(id);
+            message.getMessageProperties().setCorrelationId(payload.getIdempotencyKey());
             message.getMessageProperties().setReplyTo(callbackUrl);
             message.getMessageProperties().setTimestamp(new java.util.Date());
             return message;

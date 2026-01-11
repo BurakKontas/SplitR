@@ -1,5 +1,6 @@
 package tr.kontas.splitr.bus.event;
 
-public interface Event {
+import tr.kontas.splitr.bus.base.IdempotencyProtected;
 
+public interface Event extends IdempotencyProtected {
 }

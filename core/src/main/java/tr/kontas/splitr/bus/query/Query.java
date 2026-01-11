@@ -1,5 +1,6 @@
 package tr.kontas.splitr.bus.query;
 
-public interface Query {
+import tr.kontas.splitr.bus.base.IdempotencyProtected;
 
+public interface Query extends IdempotencyProtected {
 }

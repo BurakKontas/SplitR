@@ -8,7 +8,7 @@ import tr.kontas.splitr.test.OrderQuery;
 public class OrderQueryHandler extends BaseQueryHandler<OrderQuery> {
     @Override
     public Object handle(OrderQuery q) {
-        return "DATA-FOR-" + q.orderId();
+        return "DATA-FOR-" + q.getOrderId();
     }
 }
 

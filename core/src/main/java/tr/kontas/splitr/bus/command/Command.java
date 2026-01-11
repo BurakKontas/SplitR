@@ -1,5 +1,6 @@
 package tr.kontas.splitr.bus.command;
 
-public interface Command {
+import tr.kontas.splitr.bus.base.IdempotencyProtected;
 
+public interface Command extends IdempotencyProtected {
 }

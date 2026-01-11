@@ -1,11 +1,13 @@
 package tr.kontas.splitr.rabbitmq.autoconfigure;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.annotation.PreDestroy;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBooleanProperty;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
@@ -24,7 +26,7 @@ import tr.kontas.splitr.rabbitmq.bus.RabbitQueryBus;
 
 @AutoConfigureAfter(InMemoryBusAutoConfigure.class)
 @Configuration
-@ConditionalOnProperty(name = "splitr.publisher.enabled", havingValue = "true")
+@ConditionalOnBooleanProperty(name = "splitr.rabbit.publisher.enabled")
 public class RabbitBusAutoConfig {
 
     @Bean
@@ -39,12 +41,6 @@ public class RabbitBusAutoConfig {
         RabbitTemplate template = new RabbitTemplate(connectionFactory);
         template.setMessageConverter(converter);
         return template;
-    }
-
-    @Bean
-    @ConditionalOnMissingBean
-    public SyncRegistry syncRegistry() {
-        return new SyncRegistry();
     }
 
     @Bean

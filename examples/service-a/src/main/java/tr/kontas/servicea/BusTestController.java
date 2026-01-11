@@ -9,10 +9,7 @@ import tr.kontas.splitr.bus.command.CommandBus;
 import tr.kontas.splitr.bus.domainevent.DomainEventBus;
 import tr.kontas.splitr.bus.event.EventBus;
 import tr.kontas.splitr.bus.query.QueryBus;
-import tr.kontas.splitr.test.CreateOrderCommand;
-import tr.kontas.splitr.test.OrderDomainEvent;
-import tr.kontas.splitr.test.OrderProcessedEvent;
-import tr.kontas.splitr.test.OrderQuery;
+import tr.kontas.splitr.test.*;
 
 import java.util.UUID;
 
@@ -51,6 +48,19 @@ public class BusTestController {
     public String commandSyncDefault() {
         var command = new CreateOrderCommand("Laptop", 1);
         return commandBus.publishSync(command, String.class);
+    }
+
+    @GetMapping("/command-sync-idempotency")
+    public String commandSyncDefaultIdempotency() {
+        var command = new RandomCommand();
+        var resp1 = commandBus.publishSync(command, String.class);
+        var resp2 = commandBus.publishSync(command, String.class);
+
+        if(resp1.equals(resp2)) {
+            return "Idempotent command executed once, second call returned same result: " + resp1;
+        }
+
+        throw new RuntimeException("Idempotent command returned different results!");
     }
 
     @GetMapping("/command-async")

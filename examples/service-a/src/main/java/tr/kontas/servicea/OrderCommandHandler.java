@@ -10,7 +10,7 @@ import tr.kontas.splitr.test.CreateOrderCommand;
 public class OrderCommandHandler extends BaseCommandHandler<CreateOrderCommand> {
     @Override
     public String handle(CreateOrderCommand cmd) {
-        log.atInfo().log("Command executed for: %s %d".formatted(cmd.productName(), cmd.quantity()));
+        log.atInfo().log("Command executed for: %s %d".formatted(cmd.getProductName(), cmd.getQuantity()));
         return "SUCCESS";
     }
 }

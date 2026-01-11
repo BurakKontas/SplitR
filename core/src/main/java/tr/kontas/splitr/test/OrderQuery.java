@@ -1,6 +1,15 @@
 package tr.kontas.splitr.test;
 
-import tr.kontas.splitr.bus.query.Query;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
+import tr.kontas.splitr.bus.query.BaseQuery;
 
-public record OrderQuery(String orderId) implements Query {
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@EqualsAndHashCode(callSuper = true)
+public class OrderQuery extends BaseQuery {
+    private String orderId;
 }

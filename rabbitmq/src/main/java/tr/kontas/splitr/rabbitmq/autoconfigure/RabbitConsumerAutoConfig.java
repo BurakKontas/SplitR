@@ -1,6 +1,7 @@
 package tr.kontas.splitr.rabbitmq.autoconfigure;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.EnableRabbit;
 import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
@@ -8,11 +9,13 @@ import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBooleanProperty;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import tr.kontas.splitr.bus.registry.SyncRegistry;
 import tr.kontas.splitr.consumer.autoconfigure.InMemoryBusAutoConfigure;
 import tr.kontas.splitr.consumer.bus.CommandHandler;
 import tr.kontas.splitr.consumer.bus.EventHandler;
@@ -32,14 +35,8 @@ import java.util.List;
 @Configuration
 @EnableRabbit
 @Slf4j
-@ConditionalOnProperty(name = "splitr.consumer.enabled", havingValue = "true")
+@ConditionalOnBooleanProperty(name = "splitr.rabbit.consumer.enabled")
 public class RabbitConsumerAutoConfig {
-
-    @Bean
-    @ConditionalOnMissingBean
-    IdempotencyStore store(@Value("${splitr.idempotency.max-size:100}") int max) {
-        return new LruStore(max);
-    }
 
     @Bean
     @ConditionalOnMissingBean

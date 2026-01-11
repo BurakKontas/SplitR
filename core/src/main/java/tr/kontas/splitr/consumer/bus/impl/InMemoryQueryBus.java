@@ -1,44 +1,75 @@
 package tr.kontas.splitr.consumer.bus.impl;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import tr.kontas.splitr.bus.query.Query;
 import tr.kontas.splitr.bus.query.QueryBus;
-import tr.kontas.splitr.consumer.dispatcher.QueryDispatcher;
-import tr.kontas.splitr.consumer.store.IdempotencyStore;
-import tr.kontas.splitr.dto.QueryRequest;
+import tr.kontas.splitr.consumer.bus.QueryHandler;
+import tr.kontas.splitr.consumer.store.LruStore;
 
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
+@Slf4j
+@RequiredArgsConstructor
 public class InMemoryQueryBus implements QueryBus {
 
-    private final QueryDispatcher dispatcher;
-    private final ObjectMapper mapper;
-    private final IdempotencyStore store;
+    private final List<QueryHandler<?>> handlers;
+    private final LruStore store;
+    private Map<Class<?>, QueryHandler<?>> handlerMap;
 
-    public InMemoryQueryBus(QueryDispatcher dispatcher, ObjectMapper mapper, IdempotencyStore store) {
-        this.dispatcher = dispatcher;
-        this.mapper = mapper;
-        this.store = store;
+    private void initializeHandlers() {
+        if (handlerMap == null) {
+            handlerMap = handlers.stream()
+                    .collect(Collectors.toMap(
+                            QueryHandler::type,
+                            handler -> handler,
+                            (existing, replacement) -> existing
+                    ));
+        }
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public <T> T publishSync(Query query, Class<T> responseType, long timeoutMs) {
+        initializeHandlers();
+
+        log.info("Executing query: {} in thread: {}",
+                query.getClass().getSimpleName(),
+                Thread.currentThread().getName());
+
+        QueryHandler<Query> handler = (QueryHandler<Query>) handlerMap.get(query.getClass());
+
+        if (handler == null) {
+            log.warn("No handler found for query type: {}", query.getClass().getName());
+            return null;
+        }
+
+        if(store.contains(query.getIdempotencyKey())) {
+            log.info("Query with idempotency key {} has already been processed. Returning cached result.", query.getIdempotencyKey());
+            return (T) store.get(query.getIdempotencyKey());
+        }
+
         try {
-            var req = new QueryRequest(
-                    java.util.UUID.randomUUID().toString(),
-                    query.getClass().getName(),
-                    mapper.writeValueAsString(query),
-                    "", // dummy callback
-                    true,
-                    System.currentTimeMillis(),
-                    timeoutMs
-            );
-            dispatcher.dispatch(req);
-            var resp = store.get(req.getId());
-            if (resp == null) return null;
-            return mapper.readValue(resp.getResult(), responseType);
+            T result = (T) handler.handle(query);
+
+            store.put(query.getIdempotencyKey(), result);
+
+            if (result == null) {
+                return null;
+            }
+
+            if (responseType.isInstance(result)) {
+                return responseType.cast(result);
+            }
+
+            return result;
+
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            log.error("Error executing query: {}", query.getClass().getSimpleName(), e);
+            throw new RuntimeException("Query execution failed", e);
         }
     }
 

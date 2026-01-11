@@ -1,6 +1,16 @@
 package tr.kontas.splitr.test;
 
-import tr.kontas.splitr.bus.command.Command;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
+import tr.kontas.splitr.bus.command.BaseCommand;
 
-public record CreateOrderCommand(String productName, int quantity) implements Command {
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@EqualsAndHashCode(callSuper = true)
+public class CreateOrderCommand extends BaseCommand {
+    private String productName;
+    private int quantity;
 }

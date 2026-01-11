@@ -6,7 +6,7 @@
 
     <groupId>tr.kontas.splitr</groupId>
     <artifactId>splitr-kafka</artifactId>
-    <version>1.0.1</version>
+    <version>1.0.2</version>
     <packaging>jar</packaging>
     <description>SplitR is a lightweight, Spring Boot-based library designed to implement the Request-Response pattern over Kafka. It allows microservices to execute synchronous, typed queries across distributed boundaries while maintaining idempotency and high performance.</description>
     <url>https://github.com/BurakKontas/SplitR</url>
@@ -84,7 +84,7 @@
         <dependency>
             <groupId>tr.kontas.splitr</groupId>
             <artifactId>splitr-core</artifactId>
-            <version>1.0.1</version>
+            <version>1.0.2</version>
         </dependency>
     </dependencies>
 

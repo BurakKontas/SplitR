@@ -10,6 +10,6 @@ import tr.kontas.splitr.test.OrderProcessedEvent;
 public class OrderEventHandler extends BaseEventHandler<OrderProcessedEvent> {
     @Override
     public void onEvent(OrderProcessedEvent payload) {
-        log.atInfo().log("OrderProcessedEvent in OrderEventHandler processed with id: " + payload.orderId());
+        log.atInfo().log("OrderProcessedEvent in OrderEventHandler processed with id: " + payload.getOrderId());
     }
 }

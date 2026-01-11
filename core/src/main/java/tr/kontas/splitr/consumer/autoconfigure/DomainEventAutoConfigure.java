@@ -19,18 +19,6 @@ public class DomainEventAutoConfigure {
 
     @Bean
     @ConditionalOnMissingBean
-    public SyncRegistry syncRegistry() {
-        return new SyncRegistry();
-    }
-
-    @Bean
-    @ConditionalOnMissingBean
-    public LruStore lruStore(@Value("${splitr.idempotency.max-size:100}") int max) {
-        return new LruStore(max);
-    }
-
-    @Bean
-    @ConditionalOnMissingBean
     public DomainEventDispatcher domainEventDispatcher(
             List<DomainEventHandler<?>> handlers,
             LruStore store

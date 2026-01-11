@@ -48,7 +48,7 @@ public class RabbitCommandBus extends AbstractRabbitBus<CommandRequest> implemen
     @Override
     public void publish(Command command, long timeoutMs) {
         try {
-            sendInternal(UUID.randomUUID().toString(), command, false, timeoutMs);
+            sendInternal(command, false, timeoutMs);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

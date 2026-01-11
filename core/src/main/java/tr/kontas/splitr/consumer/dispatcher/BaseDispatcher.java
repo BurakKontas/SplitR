@@ -22,7 +22,7 @@ public abstract class BaseDispatcher<TReq extends BaseRequest, TResp extends Bas
     protected final Map<Class<?>, List<THandler>> handlers;
     protected final IdempotencyStore store;
     protected final ObjectMapper mapper;
-    protected final RestTemplate rest = new RestTemplate();
+    protected static final RestTemplate rest = new RestTemplate();
 
     protected BaseDispatcher(List<THandler> list, IdempotencyStore store, ObjectMapper mapper) {
         this.handlers = list.stream().collect(Collectors.groupingBy(BusHandler::type));
@@ -85,7 +85,7 @@ public abstract class BaseDispatcher<TReq extends BaseRequest, TResp extends Bas
         }
     }
 
-    private void triggerWebhook(TReq r, BaseResponse resp) {
+    private void triggerWebhook(TReq r, Object resp) {
         if (r instanceof EventRequest) {
             return;
         }

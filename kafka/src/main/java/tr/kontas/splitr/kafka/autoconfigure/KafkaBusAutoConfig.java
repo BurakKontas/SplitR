@@ -1,8 +1,10 @@
 package tr.kontas.splitr.kafka.autoconfigure;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.annotation.PreDestroy;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBooleanProperty;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
@@ -17,6 +19,7 @@ import tr.kontas.splitr.bus.query.QueryBus;
 import tr.kontas.splitr.bus.query.QueryCallbackController;
 import tr.kontas.splitr.bus.registry.SyncRegistry;
 import tr.kontas.splitr.consumer.autoconfigure.InMemoryBusAutoConfigure;
+import tr.kontas.splitr.consumer.store.LruStore;
 import tr.kontas.splitr.dto.CommandRequest;
 import tr.kontas.splitr.dto.EventRequest;
 import tr.kontas.splitr.dto.QueryRequest;
@@ -26,7 +29,7 @@ import tr.kontas.splitr.kafka.bus.KafkaQueryBus;
 
 @AutoConfigureAfter(InMemoryBusAutoConfigure.class)
 @Configuration
-@ConditionalOnProperty(name = "splitr.publisher.enabled", havingValue = "true")
+@ConditionalOnBooleanProperty(name = "splitr.kafka.publisher.enabled")
 public class KafkaBusAutoConfig {
 
     @Bean("queryKafka")
@@ -39,12 +42,6 @@ public class KafkaBusAutoConfig {
         }
 
         return new KafkaTemplate<>(producerFactory);
-    }
-
-    @Bean
-    @ConditionalOnMissingBean
-    public SyncRegistry syncRegistry() {
-        return new SyncRegistry();
     }
 
     @Bean

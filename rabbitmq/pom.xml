@@ -6,7 +6,7 @@
 
     <groupId>tr.kontas.splitr</groupId>
     <artifactId>splitr-rabbitmq</artifactId>
-    <version>1.0.1</version>
+    <version>1.0.2</version>
     <packaging>jar</packaging>
     <description>SplitR is a lightweight, Spring Boot-based library designed to implement the Request-Response pattern
         over RabbitMQ. It allows microservices to execute synchronous, typed queries across distributed boundaries while
@@ -87,7 +87,7 @@
         <dependency>
             <groupId>tr.kontas.splitr</groupId>
             <artifactId>splitr-core</artifactId>
-            <version>1.0.1</version>
+            <version>1.0.2</version>
         </dependency>
     </dependencies>
 

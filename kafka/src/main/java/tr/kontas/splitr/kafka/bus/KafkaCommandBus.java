@@ -47,7 +47,7 @@ public class KafkaCommandBus extends AbstractKafkaBus<CommandRequest> implements
     @Override
     public void publish(Command command, long timeoutMs) {
         try {
-            sendInternal(UUID.randomUUID().toString(), command, false, timeoutMs);
+            sendInternal(command, false, timeoutMs);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
